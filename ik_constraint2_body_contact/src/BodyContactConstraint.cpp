@@ -29,6 +29,11 @@ namespace ik_constraint2_body_contact{
       this->A_localpos_ = selectedContact;
       this->contact_pos_link_->T() = selectedContact;
     }
+    if (this->debugLevel_ >= 2) {
+      std::cerr << "selected contact point" << std::endl;
+      std::cerr << this->A_localpos_.translation().transpose() << std::endl;
+      std::cerr << this->A_localpos_.rotation() << std::endl;
+    }
     PositionConstraint::updateBounds(); // contactPointsの分解能によっては振動する可能性
     // 接触点の接平面でのみ動く
     if (this->contact_pos_link_) {
@@ -41,7 +46,7 @@ namespace ik_constraint2_body_contact{
         this->minIneq_[0] = - this->contactSearchLimit_;
         this->minIneq_[1] = - this->contactSearchLimit_;
         this->maxIneq_.resize(2);
-        this->maxIneq_[1] = this->contactSearchLimit_;
+        this->maxIneq_[0] = this->contactSearchLimit_;
         this->maxIneq_[1] = this->contactSearchLimit_;
       }
     }
@@ -60,7 +65,7 @@ namespace ik_constraint2_body_contact{
       this->jacobian_A_link_ = this->A_link_;
       this->jacobian_B_link_ = this->B_link_;
       this->jacobian_eval_link_ = this->eval_link_;
-      this->contact_pos_link_ = this->jacobian_contact_pos_link_;
+      this->jacobian_contact_pos_link_ = this->contact_pos_link_;
 
       ik_constraint2::calc6DofJacobianShape(this->jacobian_joints_,//input
                                             this->jacobian_A_link_,//input
@@ -95,9 +100,9 @@ namespace ik_constraint2_body_contact{
         this->jacobian_A_full_.insert(2,this->jacobianColMap_[this->jacobian_contact_pos_link_]+1) = 1;
         this->jacobian_A_full_.insert(2,this->jacobianColMap_[this->jacobian_contact_pos_link_]+2) = 1;
         this->jacobian_contact_pos_= Eigen::SparseMatrix<double,Eigen::RowMajor>(1,num_variables);
-        this->jacobian_contact_pos_.insert(0,this->jacobianColMap_[this->jacobian_contact_pos_link_]) = 1;
-        this->jacobian_contact_pos_.insert(0,this->jacobianColMap_[this->jacobian_contact_pos_link_]) = 1;
-        this->jacobian_contact_pos_.insert(0,this->jacobianColMap_[this->jacobian_contact_pos_link_]) = 1;
+        this->jacobian_contact_pos_.insert(0,this->jacobianColMap_[this->jacobian_contact_pos_link_]+0) = 1;
+        this->jacobian_contact_pos_.insert(0,this->jacobianColMap_[this->jacobian_contact_pos_link_]+1) = 1;
+        this->jacobian_contact_pos_.insert(0,this->jacobianColMap_[this->jacobian_contact_pos_link_]+2) = 1;
         this->jacobian_ineq_contact_pos_ = Eigen::SparseMatrix<double,Eigen::RowMajor>(2,num_variables);
         this->jacobian_ineq_contact_pos_.insert(0,this->jacobianColMap_[this->jacobian_contact_pos_link_]) = 1;
         this->jacobian_ineq_contact_pos_.insert(1,this->jacobianColMap_[this->jacobian_contact_pos_link_]) = 1;
@@ -189,6 +194,8 @@ namespace ik_constraint2_body_contact{
       std::cerr << "BodyContactConstraint" << std::endl;
       std::cerr << "jacobian" << std::endl;
       std::cerr << this->jacobian_ << std::endl;
+      std::cerr << "jacobianIneq" << std::endl;
+      std::cerr << this->jacobianIneq_ << std::endl;
     }
 
     return;

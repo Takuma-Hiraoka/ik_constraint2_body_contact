@@ -24,6 +24,7 @@ include_directories(
 
 add_library(CnoidIKConstraintBodyContactSamplePlugin SHARED
   src/CnoidIKConstraintBodyContactSamplePlugin.cpp
+  src/sample0.cpp
   src/sample1.cpp
   )
 

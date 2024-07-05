@@ -97,7 +97,7 @@ namespace ik_constraint2_body_contact_sample{
                                                                         tasks,
                                                                         param);
 
-      if(i % 10 == 0){
+      if(i % 1 == 0){
         std::cerr << "loop: " << i << std::endl;
         std::vector<cnoid::SgNodePtr> markers;
         for(int j=0;j<constraints.size();j++){
@@ -109,7 +109,7 @@ namespace ik_constraint2_body_contact_sample{
         viewer->drawOn(markers);
         viewer->drawObjects();
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
       }
 
       if(solved) break;
