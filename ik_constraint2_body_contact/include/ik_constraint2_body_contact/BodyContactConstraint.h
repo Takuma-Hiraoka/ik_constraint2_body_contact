@@ -8,6 +8,7 @@ namespace ik_constraint2_body_contact{
   public:
     // A_linkの接触候補点の中から選んだA_localposとB_link中のB_localposを一致させる
     // 接触点の法線方向は考慮されるが、接平面の方向の自由度は制約しない. 法線方向の回転自由度の重みを0にすること.
+    // precisionをcontactPointsの分解能と同程度(1/2)にすること. そうしないとsatisfiedにならない.
     // contact_pos_link: 接触候補点探索用. variablesとして追加すること. JointはFreeJointにすること. このtranslationやrotationはA_linkのローカル座標系
     // contactPoints: 接触点候補
     const cnoid::LinkPtr& contact_pos_link() const { return contact_pos_link_;}
@@ -16,6 +17,8 @@ namespace ik_constraint2_body_contact{
     std::vector<cnoid::Isometry3>& contactPoints() { return contactPoints_;}
     const double& contactSearchLimit() const { return contactSearchLimit_;}
     double& contactSearchLimit() { return contactSearchLimit_;}
+    const double& normalGradientDistance() const { return normalGradientDistance_;}
+    double& normalGradientDistance() { return normalGradientDistance_;}
     // 探索された接触点位置をもとに、PositionConstraintのA_localpos_を更新する
     virtual void updateBounds() override;
     virtual void updateJacobian (const std::vector<cnoid::LinkPtr>& joints) override;
@@ -27,7 +30,10 @@ namespace ik_constraint2_body_contact{
   private:
     cnoid::LinkPtr contact_pos_link_ = nullptr;
     std::vector<cnoid::Isometry3> contactPoints_;
+    std::vector<cnoid::Vector3> contactNormals_; // contactPointとサイズが同じ. 接触点の法線方向を滑らかにしたもの. 角を通るヤコビアンを出すため.
     double contactSearchLimit_ = 0.06;
+    cnoid::Vector3 normal_ = cnoid::Vector3::UnitX();
+    double normalGradientDistance_ = 0.1; // contactNormalsを計算する際に、normalGradientDistanceの範囲内のcontactPointsから計算する.
 
     Eigen::SparseMatrix<double,Eigen::RowMajor> jacobian_contact_pos_;
     Eigen::SparseMatrix<double,Eigen::RowMajor> jacobian_ineq_contact_pos_;

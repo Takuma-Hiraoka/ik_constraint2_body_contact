@@ -12,6 +12,25 @@ namespace ik_constraint2_body_contact{
     if (!this->contact_pos_link_ || !this->contact_pos_link_->isFreeJoint()) {
       std::cerr << "[BodyContactConstraint] contact_pos_link is not FreeJoint !" << std::endl;
     }
+
+    if (this->contactNormals_.size() == 0) {
+      double normalAngle = M_PI * 2 / 3; // 薄い板の場合の裏側は除く
+      for (int i=0; i<contactPoints_.size(); i++) {
+        cnoid::Vector3 normalSum = cnoid::Vector3::Zero();
+        int weightSum = 0;
+        for (int j=0; j<contactPoints_.size(); j++) {
+          double dist = (contactPoints_[i].translation() - contactPoints_[j].translation()).norm();
+          if (dist == 0.0) dist = 0.001; // 適当
+          if (dist < this->normalGradientDistance_ &&
+              (normalAngle >= std::acos(std::min(1.0,(std::max(-1.0,(contactPoints_[i].linear()*cnoid::Vector3::UnitZ()).dot(contactPoints_[j].linear() * cnoid::Vector3::UnitZ()))))))) {
+            double weight = 1;//0.001 / dist;
+            normalSum += weight * contactPoints_[j].linear()*cnoid::Vector3::UnitZ();
+            weightSum += weight;
+          }
+        }
+        this->contactNormals_.push_back((normalSum / weightSum).normalized());
+      }
+    }
     // 探索された接触点位置をもとに、PositionConstraintのA_localpos_を更新する
     // 最も近い接触点候補を選ぶ
     double maxValue = -1e3;
@@ -23,6 +42,7 @@ namespace ik_constraint2_body_contact{
       if (value > maxValue) {
         maxValue = value;
         selectedContact = this->contactPoints_[i];
+        this->normal_ = this->contactNormals_[i];
       }
     }
     if (maxValue != -1e3) {
@@ -33,6 +53,8 @@ namespace ik_constraint2_body_contact{
       std::cerr << "selected contact point" << std::endl;
       std::cerr << this->A_localpos_.translation().transpose() << std::endl;
       std::cerr << this->A_localpos_.rotation() << std::endl;
+      std::cerr << "selected contact normal" << std::endl;
+      std::cerr << this->normal_.transpose() << std::endl;
     }
     PositionConstraint::updateBounds(); // contactPointsの分解能によっては振動する可能性
     // 接触点の接平面でのみ動く
@@ -167,17 +189,17 @@ namespace ik_constraint2_body_contact{
     }
 
     if (this->jacobianColMap_.find(this->contact_pos_link_) != this->jacobianColMap_.end()) {
-      cnoid::Vector3 normal = this->contact_pos_link_->R() * cnoid::Vector3::UnitZ();
+      cnoid::Vector3 normal = this->normal_;
       this->jacobian_contact_pos_.coeffRef(0,this->jacobianColMap_[this->jacobian_contact_pos_link_]+0) = normal[0];
       this->jacobian_contact_pos_.coeffRef(0,this->jacobianColMap_[this->jacobian_contact_pos_link_]+1) = normal[1];
       this->jacobian_contact_pos_.coeffRef(0,this->jacobianColMap_[this->jacobian_contact_pos_link_]+2) = normal[2];
       this->jacobian_.row((this->weight_.array() > 0.0).count()) = this->jacobian_contact_pos_.row(0);
 
-      cnoid::Vector3 tangent_x = this->contact_pos_link_->R() * cnoid::Vector3::UnitX();
+      cnoid::Vector3 tangent_x = (normal==cnoid::Vector3::UnitY()) ? cnoid::Vector3::UnitZ() : cnoid::Vector3::UnitY().cross(normal);
       this->jacobian_ineq_contact_pos_.coeffRef(0,this->jacobianColMap_[this->jacobian_contact_pos_link_]+0) = tangent_x[0];
       this->jacobian_ineq_contact_pos_.coeffRef(0,this->jacobianColMap_[this->jacobian_contact_pos_link_]+1) = tangent_x[1];
       this->jacobian_ineq_contact_pos_.coeffRef(0,this->jacobianColMap_[this->jacobian_contact_pos_link_]+2) = tangent_x[2];
-      cnoid::Vector3 tangent_y = this->contact_pos_link_->R() * cnoid::Vector3::UnitY();
+      cnoid::Vector3 tangent_y = normal.cross(tangent_x);
       this->jacobian_ineq_contact_pos_.coeffRef(1,this->jacobianColMap_[this->jacobian_contact_pos_link_]+0) = tangent_y[0];
       this->jacobian_ineq_contact_pos_.coeffRef(1,this->jacobianColMap_[this->jacobian_contact_pos_link_]+1) = tangent_y[1];
       this->jacobian_ineq_contact_pos_.coeffRef(1,this->jacobianColMap_[this->jacobian_contact_pos_link_]+2) = tangent_y[2];
