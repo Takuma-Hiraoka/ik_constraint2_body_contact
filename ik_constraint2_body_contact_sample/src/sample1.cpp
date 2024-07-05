@@ -1,13 +1,18 @@
 #include <choreonoid_viewer/choreonoid_viewer.h>
 #include <cnoid/Body>
 #include <cnoid/BodyLoader>
+#include <cnoid/SceneMarkers>
+#include <iostream>
 #include <ros/package.h>
+#include <prioritized_inverse_kinematics_solver2/prioritized_inverse_kinematics_solver2.h>
+#include <ik_constraint2/ik_constraint2.h>
+#include <ik_constraint2_body_contact/BodyContactConstraint.h>
 
 namespace ik_constraint2_body_contact_sample{
   void sample1(){
     cnoid::BodyLoader bodyLoader;
     cnoid::BodyPtr robot = bodyLoader.load(ros::package::getPath("choreonoid") + "/share/model/SR1/SR1.body");
-    robot->rootLink()->p() = cnoid::Vector3(0,0,0.65);
+    robot->rootLink()->p() = cnoid::Vector3(0,0,0.6);
     robot->rootLink()->v().setZero();
     robot->rootLink()->R() = cnoid::Matrix3::Identity();
     robot->rootLink()->w().setZero();
@@ -23,10 +28,101 @@ namespace ik_constraint2_body_contact_sample{
     robot->calcForwardKinematics();
     robot->calcCenterOfMass();
 
+    // setup tasks
+    std::vector<std::shared_ptr<ik_constraint2::IKConstraint> > constraints0;
+    // joint limit
+    for(int i=0;i<robot->numJoints();i++){
+      std::shared_ptr<ik_constraint2::JointLimitConstraint> constraint = std::make_shared<ik_constraint2::JointLimitConstraint>();
+      constraint->joint() = robot->joint(i);
+      constraints0.push_back(constraint);
+    }
+    std::vector<std::shared_ptr<ik_constraint2::IKConstraint> > constraints1;
+    {
+      // task: rleg to target
+      std::shared_ptr<ik_constraint2::PositionConstraint> constraint = std::make_shared<ik_constraint2::PositionConstraint>();
+      constraint->A_link() = robot->link("RLEG_ANKLE_R");
+      constraint->A_localpos().translation() = cnoid::Vector3(0.0,0.0,-0.04);
+      constraint->B_link() = nullptr;
+      constraint->B_localpos().translation() = cnoid::Vector3(0.0,-0.2,-0.0);
+      constraints1.push_back(constraint);
+    }
+    {
+      // task: lleg to target
+      std::shared_ptr<ik_constraint2::PositionConstraint> constraint = std::make_shared<ik_constraint2::PositionConstraint>();
+      constraint->A_link() = robot->link("LLEG_ANKLE_R");
+      constraint->A_localpos().translation() = cnoid::Vector3(0.0,0.0,-0.04);
+      constraint->B_link() = nullptr;
+      constraint->B_localpos().translation() = cnoid::Vector3(0.0,0.2,0.0);
+      constraints1.push_back(constraint);
+    }
+    {
+      // task: COM to target
+      std::shared_ptr<ik_constraint2::COMConstraint> constraint = std::make_shared<ik_constraint2::COMConstraint>();
+      constraint->A_robot() = robot;
+      constraint->B_localp() = cnoid::Vector3(0.0,0.0,0.6);
+      constraints1.push_back(constraint);
+    }
+    std::vector<std::shared_ptr<ik_constraint2::IKConstraint> > constraints2;
+    {
+      // task: rarm to target. never reach
+      std::shared_ptr<ik_constraint2_body_contact::BodyContactConstraint> constraint = std::make_shared<ik_constraint2_body_contact::BodyContactConstraint>();
+      constraint->A_link() = robot->link("RARM_WRIST_R");
+      constraint->A_localpos().translation() = cnoid::Vector3(0.0,0.0,-0.02);
+      constraint->B_link() = nullptr;
+      constraint->B_localpos().translation() = cnoid::Vector3(1.0,-0.2,0.8);
+      constraint->B_localpos().linear() = cnoid::Matrix3(cnoid::AngleAxis(-1.5,cnoid::Vector3(0,1,0)));
+      constraints2.push_back(constraint);
+    }
+
+    std::vector<std::shared_ptr<prioritized_qp_base::Task> > tasks;
+    std::vector<cnoid::LinkPtr> variables;
+    variables.push_back(robot->rootLink());
+    for(size_t i=0;i<robot->numJoints();i++){
+      variables.push_back(robot->joint(i));
+    }
+    std::vector<std::vector<std::shared_ptr<ik_constraint2::IKConstraint> > > constraints{constraints0,constraints1,constraints2};
     // setup viewer
     std::shared_ptr<choreonoid_viewer::Viewer> viewer = std::make_shared<choreonoid_viewer::Viewer>();
     viewer->objects(robot);
 
     viewer->drawObjects();
+    // main loop
+    for(int i=0;i<200;i++){
+      prioritized_inverse_kinematics_solver2::IKParam param;
+      param.debugLevel = 0; // debug
+      param.maxIteration = 1;
+      param.we = 1e2;
+      bool solved = prioritized_inverse_kinematics_solver2::solveIKLoop(variables,
+                                                                        constraints,
+                                                                        tasks,
+                                                                        param);
+
+      if(i % 10 == 0){
+        std::cerr << "loop: " << i << std::endl;
+        std::vector<cnoid::SgNodePtr> markers;
+        for(int j=0;j<constraints.size();j++){
+          for(int k=0;k<constraints[j].size(); k++){
+            const std::vector<cnoid::SgNodePtr>& marker = constraints[j][k]->getDrawOnObjects();
+            std::copy(marker.begin(), marker.end(), std::back_inserter(markers));
+          }
+        }
+        viewer->drawOn(markers);
+        viewer->drawObjects();
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+      }
+
+      if(solved) break;
+    }
+
+    for(size_t i=0;i<constraints.size();i++){
+      for(size_t j=0;j<constraints[i].size();j++){
+        constraints[i][j]->debugLevel() = 0;//not debug
+        constraints[i][j]->updateBounds();
+        if(constraints[i][j]->isSatisfied()) std::cerr << "constraint " << i << " " << j << ": satisfied"<< std::endl;
+        else std::cerr << "constraint " << i << " " << j << ": NOT satidfied"<< std::endl;
+      }
+    }
+
   }
 }

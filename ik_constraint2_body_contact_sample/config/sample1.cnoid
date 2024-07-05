@@ -6,6 +6,6 @@ items:
   children:
     -
       id: 1
-      name: "CnoidIKConstraintBodyContactSamplePlugin"
-      plugin: CnoidIKConstraintBodyContactSample
+      name: "IKConstraintBodyContactSamplePlugin"
+      plugin: IKConstraintBodyContactSample
       class: sample1Item
