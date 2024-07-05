@@ -20,12 +20,10 @@ namespace ik_constraint2_body_contact{
         int weightSum = 0;
         for (int j=0; j<contactPoints_.size(); j++) {
           double dist = (contactPoints_[i].translation() - contactPoints_[j].translation()).norm();
-          if (dist == 0.0) dist = 0.001; // 適当
           if (dist < this->normalGradientDistance_ &&
               (normalAngle >= std::acos(std::min(1.0,(std::max(-1.0,(contactPoints_[i].linear()*cnoid::Vector3::UnitZ()).dot(contactPoints_[j].linear() * cnoid::Vector3::UnitZ()))))))) {
-            double weight = 1;//0.001 / dist;
-            normalSum += weight * contactPoints_[j].linear()*cnoid::Vector3::UnitZ();
-            weightSum += weight;
+            normalSum += contactPoints_[j].linear()*cnoid::Vector3::UnitZ();
+            weightSum++;
           }
         }
         this->contactNormals_.push_back((normalSum / weightSum).normalized());
@@ -33,19 +31,17 @@ namespace ik_constraint2_body_contact{
     }
     // 探索された接触点位置をもとに、PositionConstraintのA_localpos_を更新する
     // 最も近い接触点候補を選ぶ
-    double maxValue = -1e3;
-    double weight = 0.1;
+    double minValue = 1e3;
     cnoid::Isometry3 selectedContact;
     for (int i=0; i<this->contactPoints_.size(); i++) {
-      double value=weight*(this->contactPoints_[i].linear()*cnoid::Vector3::UnitZ()).dot(this->contact_pos_link_->R() * cnoid::Vector3::UnitZ());
-      value -= (this->contactPoints_[i].translation() - this->contact_pos_link_->p()).norm();
-      if (value > maxValue) {
-        maxValue = value;
+      double value = (this->contactPoints_[i].translation() - this->contact_pos_link_->p()).norm();
+      if (value < minValue) {
+        minValue = value;
         selectedContact = this->contactPoints_[i];
         this->normal_ = this->contactNormals_[i];
       }
     }
-    if (maxValue != -1e3) {
+    if (minValue != 1e3) {
       this->A_localpos_ = selectedContact;
       this->contact_pos_link_->T() = selectedContact;
     }

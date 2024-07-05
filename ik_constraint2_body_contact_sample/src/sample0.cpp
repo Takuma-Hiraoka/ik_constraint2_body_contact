@@ -33,18 +33,60 @@ namespace ik_constraint2_body_contact_sample{
       std::shared_ptr<ik_constraint2_body_contact::BodyContactConstraint> constraint = std::make_shared<ik_constraint2_body_contact::BodyContactConstraint>();
       constraint->A_link() = rootLink;
       constraint->B_link() = nullptr;
-      constraint->B_localpos().translation() = cnoid::Vector3(0.3,0.3,0.0);
+      constraint->B_localpos().translation() = cnoid::Vector3(0.47,-0.11,-0.1);
+      constraint->B_localpos().linear() = cnoid::Matrix3(cnoid::AngleAxis(M_PI,cnoid::Vector3(0,1,0)));
       constraint->contact_pos_link() = variable;
       constraint->debugLevel() = 0;
-      double resolution=0.03;
+      constraint->weight()[5] = 0;
+      double resolution=0.02;
       for (int i=0; i<1.0/resolution;i++) {
         for (int j=0; j<1.0/resolution;j++) {
           cnoid::Isometry3 contactPoint = cnoid::Isometry3::Identity();
-          contactPoint.translation() = cnoid::Vector3(i*resolution - 0.5, j*resolution - 0.5, 0);
+          contactPoint.translation() = cnoid::Vector3(i*resolution - 0.5+0.01, j*resolution - 0.5+0.01, 0);
           constraint->contactPoints().push_back(contactPoint);
         }
       }
-      constraint->precision() = resolution / 2;
+      for (int i=0; i<1.0/resolution;i++) {
+        for (int j=0; j<1.0/resolution;j++) {
+          cnoid::Isometry3 contactPoint = cnoid::Isometry3::Identity();
+          contactPoint.translation() = cnoid::Vector3(0.5, i*resolution - 0.5+0.01, -j*resolution-0.01);
+          contactPoint.linear() = cnoid::Matrix3(cnoid::AngleAxis(M_PI / 2,cnoid::Vector3(0,1,0)));
+          constraint->contactPoints().push_back(contactPoint);
+        }
+      }
+      for (int i=0; i<1.0/resolution;i++) {
+        for (int j=0; j<1.0/resolution;j++) {
+          cnoid::Isometry3 contactPoint = cnoid::Isometry3::Identity();
+          contactPoint.translation() = cnoid::Vector3(-0.5, i*resolution - 0.5+0.01, -j*resolution-0.01);
+          contactPoint.linear() = cnoid::Matrix3(cnoid::AngleAxis(-M_PI / 2,cnoid::Vector3(0,1,0)));
+          constraint->contactPoints().push_back(contactPoint);
+        }
+      }
+      for (int i=0; i<1.0/resolution;i++) {
+        for (int j=0; j<1.0/resolution;j++) {
+          cnoid::Isometry3 contactPoint = cnoid::Isometry3::Identity();
+          contactPoint.translation() = cnoid::Vector3(i*resolution - 0.5+0.01, 0.5, -j*resolution-0.01);
+          contactPoint.linear() = cnoid::Matrix3(cnoid::AngleAxis(-M_PI / 2,cnoid::Vector3(1,0,0)));
+          constraint->contactPoints().push_back(contactPoint);
+        }
+      }
+      for (int i=0; i<1.0/resolution;i++) {
+        for (int j=0; j<1.0/resolution;j++) {
+          cnoid::Isometry3 contactPoint = cnoid::Isometry3::Identity();
+          contactPoint.translation() = cnoid::Vector3(i*resolution - 0.5+0.01, -0.5, -j*resolution-0.01);
+          contactPoint.linear() = cnoid::Matrix3(cnoid::AngleAxis(M_PI / 2,cnoid::Vector3(1,0,0)));
+          constraint->contactPoints().push_back(contactPoint);
+        }
+      }
+      for (int i=0; i<1.0/resolution;i++) {
+        for (int j=0; j<1.0/resolution;j++) {
+          cnoid::Isometry3 contactPoint = cnoid::Isometry3::Identity();
+          contactPoint.translation() = cnoid::Vector3(i*resolution - 0.5+0.01, j*resolution - 0.5+0.01, -0.1);
+          contactPoint.linear() = cnoid::Matrix3(cnoid::AngleAxis(M_PI,cnoid::Vector3(0,1,0)));
+          constraint->contactPoints().push_back(contactPoint);
+        }
+      }
+      constraint->precision() = resolution;
       constraints1.push_back(constraint);
     }
 
@@ -79,6 +121,7 @@ namespace ik_constraint2_body_contact_sample{
         viewer->drawObjects();
 
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        getchar();
       }
 
       if(solved) break;

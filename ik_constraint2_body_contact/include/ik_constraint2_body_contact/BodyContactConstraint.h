@@ -8,7 +8,7 @@ namespace ik_constraint2_body_contact{
   public:
     // A_linkの接触候補点の中から選んだA_localposとB_link中のB_localposを一致させる
     // 接触点の法線方向は考慮されるが、接平面の方向の自由度は制約しない. 法線方向の回転自由度の重みを0にすること.
-    // precisionをcontactPointsの分解能と同程度(1/2)にすること. そうしないとsatisfiedにならない.
+    // precisionをcontactPointsの分解能と同程度にすること. そうしないとsatisfiedにならない.
     // contact_pos_link: 接触候補点探索用. variablesとして追加すること. JointはFreeJointにすること. このtranslationやrotationはA_linkのローカル座標系
     // contactPoints: 接触点候補
     const cnoid::LinkPtr& contact_pos_link() const { return contact_pos_link_;}
