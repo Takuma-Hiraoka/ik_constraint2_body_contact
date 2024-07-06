@@ -24,7 +24,7 @@ namespace ik_constraint2_body_contact{
     virtual void updateJacobian (const std::vector<cnoid::LinkPtr>& joints) override;
 
     unsigned int convertContactPointsIdx(int x, int y, int z);
-    void setContactPoints(std::vector<cnoid::Isometry3> contactPoints, double contactPointLength=0.05, unsigned int contactPointAreaDim=16);
+    void setContactPoints(std::vector<cnoid::Isometry3> contactPoints, double contactPointLength=0.05, int contactPointAreaDim=16);
     // 複製する. このとき、modelMapのkeyにあるロボットモデルに属するリンクは、valueに置き換える
     virtual std::shared_ptr<ik_constraint2::IKConstraint> clone(const std::map<cnoid::BodyPtr, cnoid::BodyPtr>& modelMap) const override;
     void copy(std::shared_ptr<BodyContactConstraint> ret, const std::map<cnoid::BodyPtr, cnoid::BodyPtr>& modelMap) const;
@@ -38,7 +38,7 @@ namespace ik_constraint2_body_contact{
     cnoid::Vector3 normal_ = cnoid::Vector3::UnitX();
     double normalGradientDistance_ = 0.1; // contactNormalsを計算する際に、normalGradientDistanceの範囲内のcontactPointsから計算する.
     double contactPointLength_ = 0.05; // contactPointAreaLength
-    unsigned int  contactPointAreaDim_ = 16; // contactPointsは全て原点中心の一辺がcontactPointAreaLength*contactPointAreaDimの立方体の中に収まっている必要がある.
+    int  contactPointAreaDim_ = 16; // contactPointsは全て原点中心の一辺がcontactPointAreaLength*contactPointAreaDimの立方体の中に収まっている必要がある.
 
     Eigen::SparseMatrix<double,Eigen::RowMajor> jacobian_contact_pos_;
     Eigen::SparseMatrix<double,Eigen::RowMajor> jacobian_ineq_contact_pos_;

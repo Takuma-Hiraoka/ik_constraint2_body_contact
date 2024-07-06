@@ -13,7 +13,7 @@ namespace ik_constraint2_body_contact{
     return (x+this->contactPointAreaDim_/2) + this->contactPointAreaDim_*(y+this->contactPointAreaDim_/2) + this->contactPointAreaDim_*this->contactPointAreaDim_*(z+this->contactPointAreaDim_/2);
   }
 
-  void BodyContactConstraint::setContactPoints(std::vector<cnoid::Isometry3> contactPoints, double contactPointLength, unsigned int contactPointAreaDim) {
+  void BodyContactConstraint::setContactPoints(std::vector<cnoid::Isometry3> contactPoints, double contactPointLength, int contactPointAreaDim) {
     this->contactPointLength_ = contactPointLength;
     this->contactPointAreaDim_ = contactPointAreaDim;
     this->contactPoints_.resize(this->contactPointAreaDim_*this->contactPointAreaDim_*this->contactPointAreaDim_);
