@@ -1,5 +1,6 @@
 #include <ik_constraint2_body_contact/BodyContactConstraint.h>
 #include <ik_constraint2/Jacobian.h>
+#include <cnoid/TimeMeasure>
 
 namespace ik_constraint2_body_contact{
   size_t getJointDOF(const cnoid::LinkPtr& joint) {
@@ -8,42 +9,114 @@ namespace ik_constraint2_body_contact{
     else return 0;
   }
 
+  unsigned int BodyContactConstraint::convertContactPointsIdx(int x, int y, int z) {
+    return (x+this->contactPointAreaDim_/2) + this->contactPointAreaDim_*(y+this->contactPointAreaDim_/2) + this->contactPointAreaDim_*this->contactPointAreaDim_*(z+this->contactPointAreaDim_/2);
+  }
+
+  void BodyContactConstraint::setContactPoints(std::vector<cnoid::Isometry3> contactPoints, double contactPointLength, unsigned int contactPointAreaDim) {
+    this->contactPointLength_ = contactPointLength;
+    this->contactPointAreaDim_ = contactPointAreaDim;
+    this->contactPoints_.resize(this->contactPointAreaDim_*this->contactPointAreaDim_*this->contactPointAreaDim_);
+    for (int i=0; i<contactPoints.size(); i++) {
+      int x = std::floor(contactPoints[i].translation()[0]/this->contactPointLength_);
+      int y = std::floor(contactPoints[i].translation()[1]/this->contactPointLength_);
+      int z = std::floor(contactPoints[i].translation()[2]/this->contactPointLength_);
+      if (std::abs(x)> this->contactPointAreaDim_/2 ||
+          std::abs(y)> this->contactPointAreaDim_/2 ||
+          std::abs(z)> this->contactPointAreaDim_/2) {
+        std::cerr << "[BodyContactConstraint] contactPoint is out of contactPointArea. Check contactPointLength and contactPointAreaDim !! " << contactPoints[i].translation().transpose() << std::endl;
+      }
+      this->contactPoints_[convertContactPointsIdx(x,y,z)].push_back(contactPoints[i]);
+    }
+  }
+
   void BodyContactConstraint::updateBounds() {
     if (!this->contact_pos_link_ || !this->contact_pos_link_->isFreeJoint()) {
       std::cerr << "[BodyContactConstraint] contact_pos_link is not FreeJoint !" << std::endl;
     }
 
     if (this->contactNormals_.size() == 0) {
+      cnoid::TimeMeasure timer;
+      if (this->debugLevel_ >= 1) timer.begin();
+      this->contactNormals_.resize(this->contactPointAreaDim_*this->contactPointAreaDim_*this->contactPointAreaDim_);
       double normalAngle = M_PI * 2 / 3; // 薄い板の場合の裏側は除く
-      for (int i=0; i<contactPoints_.size(); i++) {
-        cnoid::Vector3 normalSum = cnoid::Vector3::Zero();
-        int weightSum = 0;
-        for (int j=0; j<contactPoints_.size(); j++) {
-          double dist = (contactPoints_[i].translation() - contactPoints_[j].translation()).norm();
-          if (dist < this->normalGradientDistance_ &&
-              (normalAngle >= std::acos(std::min(1.0,(std::max(-1.0,(contactPoints_[i].linear()*cnoid::Vector3::UnitZ()).dot(contactPoints_[j].linear() * cnoid::Vector3::UnitZ()))))))) {
-            normalSum += contactPoints_[j].linear()*cnoid::Vector3::UnitZ();
-            weightSum++;
+      for (unsigned int i=0; i<this->contactPoints_.size(); i++) {
+        if (this->contactPoints_[i].size() == 0) continue;
+        // normalを計算する近傍のidxを求める
+        int x = i % this->contactPointAreaDim_ - (this->contactPointAreaDim_)/2;
+        int y = (i % (this->contactPointAreaDim_*this->contactPointAreaDim_)) / this->contactPointAreaDim_ - (this->contactPointAreaDim_)/2;
+        int z = i / (this->contactPointAreaDim_*this->contactPointAreaDim_) - (this->contactPointAreaDim_)/2;
+        std::vector<unsigned int> idxs;
+        int length = this->normalGradientDistance_ / this->contactPointLength_;
+        idxs.push_back(i);
+        for (int kx=-length; kx<=length;kx++){
+          for (int ky=-length; ky<=length;ky++){
+            for (int kz=-length; kz<=length;kz++){
+              unsigned int k = convertContactPointsIdx(x+kx,y+ky,z+kz);
+              if (k<this->contactPoints_.size()) idxs.push_back(k);
+            }
           }
         }
-        this->contactNormals_.push_back((normalSum / weightSum).normalized());
+
+        for (int j=0; j<this->contactPoints_[i].size(); j++){
+          cnoid::Vector3 normalSum = cnoid::Vector3::Zero();
+          int weightSum = 0;
+          for (unsigned int idx=0; idx<idxs.size(); idx++){
+            for (int k=0;k<this->contactPoints_[idxs[idx]].size(); k++) {
+              double dist = (contactPoints_[i][j].translation() - contactPoints_[idxs[idx]][k].translation()).norm();
+              if (dist < this->normalGradientDistance_ &&
+                  (normalAngle >= std::acos(std::min(1.0,(std::max(-1.0,(contactPoints_[i][j].linear()*cnoid::Vector3::UnitZ()).dot(contactPoints_[idxs[idx]][k].linear() * cnoid::Vector3::UnitZ()))))))) {
+                normalSum += contactPoints_[idxs[idx]][k].linear()*cnoid::Vector3::UnitZ();
+                weightSum++;
+              }
+            }
+          }
+          this->contactNormals_[i].push_back((normalSum / weightSum).normalized());
+        }
       }
+      if (this->debugLevel_ >= 1) std::cerr << "[BodyContactConstraint] " << (this->A_link_ ? this->A_link_->name() : std::string("world")) << " create nominals " << timer.measure() << " [s]" << std::endl;
     }
     // 探索された接触点位置をもとに、PositionConstraintのA_localpos_を更新する
     // 最も近い接触点候補を選ぶ
-    double minValue = 1e3;
-    cnoid::Isometry3 selectedContact;
-    for (int i=0; i<this->contactPoints_.size(); i++) {
-      double value = (this->contactPoints_[i].translation() - this->contact_pos_link_->p()).norm();
-      if (value < minValue) {
-        minValue = value;
-        selectedContact = this->contactPoints_[i];
-        this->normal_ = this->contactNormals_[i];
+    {
+      cnoid::TimeMeasure timer;
+      if (this->debugLevel_ >= 1) timer.begin();
+      int x = this->contact_pos_link_->p()[0]/this->contactPointLength_;
+      int y = this->contact_pos_link_->p()[1]/this->contactPointLength_;
+      int z = this->contact_pos_link_->p()[2]/this->contactPointLength_;
+      int dx = this->contact_pos_link_->p()[0] - x*this->contactPointLength_ > this->contactPointLength_/2 ? 1 : -1;
+      int dy = this->contact_pos_link_->p()[1] - y*this->contactPointLength_ > this->contactPointLength_/2 ? 1 : -1;
+      int dz = this->contact_pos_link_->p()[2] - z*this->contactPointLength_ > this->contactPointLength_/2 ? 1 : -1;
+      // 接触点候補になりうる近傍のidxを求める
+      std::vector<unsigned int> idxs;
+      for (int kx=0; kx<2; kx++) {
+        for (int ky=0; ky<2; ky++) {
+          for (int kz=0; kz<2; kz++) {
+            if (std::abs(x+kx*dx)> this->contactPointAreaDim_/2 ||
+                std::abs(y+ky*dy)> this->contactPointAreaDim_/2 ||
+                std::abs(z+kz*dz)> this->contactPointAreaDim_/2) continue;
+            idxs.push_back(convertContactPointsIdx(x+kx*dx,y+ky*dy,z+kz*dz));
+          }
+        }
       }
-    }
-    if (minValue != 1e3) {
-      this->A_localpos_ = selectedContact;
-      this->contact_pos_link_->T() = selectedContact;
+      // 最近接接触点を選ぶ
+      double minValue = 1e3;
+      cnoid::Isometry3 selectedContact;
+      for (unsigned int idx=0; idx<idxs.size(); idx++){
+        for (int i=0; i<this->contactPoints_[idxs[idx]].size(); i++) {
+          double value = (this->contactPoints_[idxs[idx]][i].translation() - this->contact_pos_link_->p()).norm();
+          if (value < minValue) {
+            minValue = value;
+            selectedContact = this->contactPoints_[idxs[idx]][i];
+            this->normal_ = this->contactNormals_[idxs[idx]][i];
+          }
+        }
+      }
+      if (minValue != 1e3) {
+        this->A_localpos_ = selectedContact;
+        this->contact_pos_link_->T() = selectedContact;
+      }
+      if (this->debugLevel_ >= 1) std::cerr << "[BodyContactConstraint] " << (this->A_link_ ? this->A_link_->name() : std::string("world")) << " search nearest contact point " << timer.measure() << " [s]" << std::endl;
     }
     if (this->debugLevel_ >= 2) {
       std::cerr << "selected contact point" << std::endl;
