@@ -2,6 +2,7 @@
 #include <cnoid/Body>
 #include <cnoid/BodyLoader>
 #include <cnoid/SceneMarkers>
+#include <cnoid/YAMLReader>
 #include <iostream>
 #include <ros/package.h>
 #include <prioritized_inverse_kinematics_solver2/prioritized_inverse_kinematics_solver2.h>
@@ -27,6 +28,51 @@ namespace ik_constraint2_body_contact_sample{
     }
     robot->calcForwardKinematics();
     robot->calcCenterOfMass();
+
+    std::string contactFileName = ros::package::getPath("ik_constraint2_body_contact_sample") + "/config/sample_config.yaml";
+    cnoid::YAMLReader reader;
+    cnoid::MappingPtr node;
+    std::string prevLinkName = "";
+    std::vector<cnoid::Isometry3> contactPoints;
+    try {
+      node = reader.loadDocument(contactFileName)->toMapping();
+    } catch(const cnoid::ValueNode::Exception& ex) {
+      std::cerr << ex.message()  << std::endl;
+    }
+    if(node){
+      cnoid::Listing* tactileSensorList = node->findListing("tactile_sensor");
+      if (!tactileSensorList->isValid()) {
+        std::cerr << "tactile_sensor list is not valid" << std::endl;
+      }else{
+        for (int i=0; i< tactileSensorList->size(); i++) {
+          cnoid::Mapping* info = tactileSensorList->at(i)->toMapping();
+          std::string linkName;
+          // linkname
+          info->extract("link", linkName);
+          if (linkName != "RARM_WRIST_R") continue;
+          cnoid::Isometry3 sensor;
+          // translation
+          cnoid::ValueNodePtr translation_ = info->extract("translation");
+          if(translation_){
+            cnoid::ListingPtr translationTmp = translation_->toListing();
+            if(translationTmp->size()==3){
+              sensor.translation() = cnoid::Vector3(translationTmp->at(0)->toDouble(), translationTmp->at(1)->toDouble(), translationTmp->at(2)->toDouble());
+            }
+          }
+          // rotation
+          cnoid::ValueNodePtr rotation_ = info->extract("rotation");
+          if(rotation_){
+            cnoid::ListingPtr rotationTmp = rotation_->toListing();
+            if(rotationTmp->size() == 4){
+              sensor.linear() = cnoid::AngleAxisd(rotationTmp->at(3)->toDouble(),
+                                                  cnoid::Vector3{rotationTmp->at(0)->toDouble(), rotationTmp->at(1)->toDouble(), rotationTmp->at(2)->toDouble()}).toRotationMatrix();
+            }
+          }
+          contactPoints.push_back(sensor);
+        }
+      }
+    }
+
 
     // setup tasks
     std::vector<std::shared_ptr<ik_constraint2::IKConstraint> > constraints0;
@@ -63,14 +109,28 @@ namespace ik_constraint2_body_contact_sample{
       constraints1.push_back(constraint);
     }
     std::vector<std::shared_ptr<ik_constraint2::IKConstraint> > constraints2;
+    cnoid::LinkPtr variable = new cnoid::Link();
+    variable->setJointType(cnoid::Link::JointType::FreeJoint);
     {
       // task: rarm to target. never reach
       std::shared_ptr<ik_constraint2_body_contact::BodyContactConstraint> constraint = std::make_shared<ik_constraint2_body_contact::BodyContactConstraint>();
       constraint->A_link() = robot->link("RARM_WRIST_R");
-      constraint->A_localpos().translation() = cnoid::Vector3(0.0,0.0,-0.02);
+      constraint->A_localpos().translation() = cnoid::Vector3(0.025,0.0,0.-0.01);
       constraint->B_link() = nullptr;
-      constraint->B_localpos().translation() = cnoid::Vector3(1.0,-0.2,0.8);
-      constraint->B_localpos().linear() = cnoid::Matrix3(cnoid::AngleAxis(-1.5,cnoid::Vector3(0,1,0)));
+      constraint->B_localpos().translation() = cnoid::Vector3(0.85,-0.2,0.8);
+      constraint->B_localpos().linear() = cnoid::Matrix3(cnoid::AngleAxis(M_PI/2,cnoid::Vector3(0,1,0)));
+      constraint->eval_localR() = constraint->B_localpos().linear();
+      constraint->contact_pos_link() = variable;
+      constraint->contact_pos_link()->T() = constraint->A_localpos();
+      constraint->setContactPoints(contactPoints, 0.05, 10);
+      constraint->contactSearchLimit() = 0.02;
+      constraint->precision() = 0.02;
+      constraint->contactWeight() = 0.5;
+      constraint->weight()[3] = 0.1;
+      constraint->weight()[4] = 0.1;
+      constraint->weight()[5] = 0;
+      constraint->debugLevel() = 0;
+
       constraints2.push_back(constraint);
     }
 
@@ -80,6 +140,7 @@ namespace ik_constraint2_body_contact_sample{
     for(size_t i=0;i<robot->numJoints();i++){
       variables.push_back(robot->joint(i));
     }
+    variables.push_back(variable);
     std::vector<std::vector<std::shared_ptr<ik_constraint2::IKConstraint> > > constraints{constraints0,constraints1,constraints2};
     // setup viewer
     std::shared_ptr<choreonoid_viewer::Viewer> viewer = std::make_shared<choreonoid_viewer::Viewer>();
@@ -110,6 +171,7 @@ namespace ik_constraint2_body_contact_sample{
         viewer->drawObjects();
 
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        getchar();
       }
 
       if(solved) break;

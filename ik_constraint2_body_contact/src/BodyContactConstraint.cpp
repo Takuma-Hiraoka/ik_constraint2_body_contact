@@ -78,7 +78,7 @@ namespace ik_constraint2_body_contact{
     }
     // 探索された接触点位置をもとに、PositionConstraintのA_localpos_を更新する
     // 最も近い接触点候補を選ぶ
-    {
+    if (this->contact_pos_link_) {
       cnoid::TimeMeasure timer;
       if (this->debugLevel_ >= 1) timer.begin();
       int x = this->contact_pos_link_->p()[0]/this->contactPointLength_;
@@ -126,19 +126,19 @@ namespace ik_constraint2_body_contact{
       std::cerr << this->normal_.transpose() << std::endl;
     }
     PositionConstraint::updateBounds(); // contactPointsの分解能によっては振動する可能性
-    // 接触点の接平面でのみ動く
     if (this->contact_pos_link_) {
-      this->eq_.conservativeResize(this->eq_.size()+1);
-      this->eq_[this->eq_.size()-1] = 0.0;
-      if (this->minIneq_.size() != 2 ||
-          this->maxIneq_.size() != 2) {
+      if (this->minIneq_.size() != 3 ||
+          this->maxIneq_.size() != 3) {
+        // 接触点の接平面でのみ動く
         // 接触点の1イテレーションあたり探索領域の制限
-        this->minIneq_.resize(2);
-        this->minIneq_[0] = - this->contactSearchLimit_;
+        this->minIneq_.resize(3);
+        this->minIneq_[0] = 0.0;
         this->minIneq_[1] = - this->contactSearchLimit_;
-        this->maxIneq_.resize(2);
-        this->maxIneq_[0] = this->contactSearchLimit_;
+        this->minIneq_[2] = - this->contactSearchLimit_;
+        this->maxIneq_.resize(3);
+        this->maxIneq_[0] = 0.0;
         this->maxIneq_[1] = this->contactSearchLimit_;
+        this->maxIneq_[2] = this->contactSearchLimit_;
       }
     }
   }
@@ -223,15 +223,15 @@ namespace ik_constraint2_body_contact{
                                          );
 
     if (this->jacobianColMap_.find(this->contact_pos_link_) != this->jacobianColMap_.end()) {
-      this->jacobian_A_full_.coeffRef(0,this->jacobianColMap_[this->jacobian_contact_pos_link_]+0) = this->A_link()->R()(0,0);
-      this->jacobian_A_full_.coeffRef(0,this->jacobianColMap_[this->jacobian_contact_pos_link_]+1) = this->A_link()->R()(0,1);
-      this->jacobian_A_full_.coeffRef(0,this->jacobianColMap_[this->jacobian_contact_pos_link_]+2) = this->A_link()->R()(0,2);
-      this->jacobian_A_full_.coeffRef(1,this->jacobianColMap_[this->jacobian_contact_pos_link_]+0) = this->A_link()->R()(1,0);
-      this->jacobian_A_full_.coeffRef(1,this->jacobianColMap_[this->jacobian_contact_pos_link_]+1) = this->A_link()->R()(1,1);
-      this->jacobian_A_full_.coeffRef(1,this->jacobianColMap_[this->jacobian_contact_pos_link_]+2) = this->A_link()->R()(1,2);
-      this->jacobian_A_full_.coeffRef(2,this->jacobianColMap_[this->jacobian_contact_pos_link_]+0) = this->A_link()->R()(2,0);
-      this->jacobian_A_full_.coeffRef(2,this->jacobianColMap_[this->jacobian_contact_pos_link_]+1) = this->A_link()->R()(2,1);
-      this->jacobian_A_full_.coeffRef(2,this->jacobianColMap_[this->jacobian_contact_pos_link_]+2) = this->A_link()->R()(2,2);
+      this->jacobian_A_full_.coeffRef(0,this->jacobianColMap_[this->jacobian_contact_pos_link_]+0) = this->contactWeight_ * this->A_link()->R()(0,0);
+      this->jacobian_A_full_.coeffRef(0,this->jacobianColMap_[this->jacobian_contact_pos_link_]+1) = this->contactWeight_ * this->A_link()->R()(0,1);
+      this->jacobian_A_full_.coeffRef(0,this->jacobianColMap_[this->jacobian_contact_pos_link_]+2) = this->contactWeight_ * this->A_link()->R()(0,2);
+      this->jacobian_A_full_.coeffRef(1,this->jacobianColMap_[this->jacobian_contact_pos_link_]+0) = this->contactWeight_ * this->A_link()->R()(1,0);
+      this->jacobian_A_full_.coeffRef(1,this->jacobianColMap_[this->jacobian_contact_pos_link_]+1) = this->contactWeight_ * this->A_link()->R()(1,1);
+      this->jacobian_A_full_.coeffRef(1,this->jacobianColMap_[this->jacobian_contact_pos_link_]+2) = this->contactWeight_ * this->A_link()->R()(1,2);
+      this->jacobian_A_full_.coeffRef(2,this->jacobianColMap_[this->jacobian_contact_pos_link_]+0) = this->contactWeight_ * this->A_link()->R()(2,0);
+      this->jacobian_A_full_.coeffRef(2,this->jacobianColMap_[this->jacobian_contact_pos_link_]+1) = this->contactWeight_ * this->A_link()->R()(2,1);
+      this->jacobian_A_full_.coeffRef(2,this->jacobianColMap_[this->jacobian_contact_pos_link_]+2) = this->contactWeight_ * this->A_link()->R()(2,2);
     }
 
     cnoid::Matrix3d eval_R = (this->eval_link_) ? this->eval_link_->R() * this->eval_localR_ : this->eval_localR_;
@@ -262,7 +262,6 @@ namespace ik_constraint2_body_contact{
       this->jacobian_contact_pos_.coeffRef(0,this->jacobianColMap_[this->jacobian_contact_pos_link_]+0) = normal[0];
       this->jacobian_contact_pos_.coeffRef(0,this->jacobianColMap_[this->jacobian_contact_pos_link_]+1) = normal[1];
       this->jacobian_contact_pos_.coeffRef(0,this->jacobianColMap_[this->jacobian_contact_pos_link_]+2) = normal[2];
-      this->jacobian_.row((this->weight_.array() > 0.0).count()) = this->jacobian_contact_pos_.row(0);
 
       cnoid::Vector3 tangent_x = (normal==cnoid::Vector3::UnitY()) ? cnoid::Vector3::UnitZ() : cnoid::Vector3::UnitY().cross(normal);
       this->jacobian_ineq_contact_pos_.coeffRef(0,this->jacobianColMap_[this->jacobian_contact_pos_link_]+0) = tangent_x[0];
@@ -273,9 +272,10 @@ namespace ik_constraint2_body_contact{
       this->jacobian_ineq_contact_pos_.coeffRef(1,this->jacobianColMap_[this->jacobian_contact_pos_link_]+1) = tangent_y[1];
       this->jacobian_ineq_contact_pos_.coeffRef(1,this->jacobianColMap_[this->jacobian_contact_pos_link_]+2) = tangent_y[2];
 
-      this->jacobianIneq_.resize(2,this->jacobian_.cols());
-      this->jacobianIneq_.row(0) = this->jacobian_ineq_contact_pos_.row(0);
-      this->jacobianIneq_.row(1) = this->jacobian_ineq_contact_pos_.row(1);
+      this->jacobianIneq_.resize(3,this->jacobian_.cols());
+      this->jacobianIneq_.row(0) = this->jacobian_contact_pos_.row(0);
+      this->jacobianIneq_.row(1) = this->jacobian_ineq_contact_pos_.row(0);
+      this->jacobianIneq_.row(2) = this->jacobian_ineq_contact_pos_.row(1);
     } else {
       // this->jacobianIneq_のサイズだけそろえる
       this->jacobianIneq_.resize(0,this->jacobian_.cols());
