@@ -21,9 +21,9 @@ namespace ik_constraint2_body_contact{
       int x = std::floor(contactPoints[i].translation()[0]/this->contactPointLength_);
       int y = std::floor(contactPoints[i].translation()[1]/this->contactPointLength_);
       int z = std::floor(contactPoints[i].translation()[2]/this->contactPointLength_);
-      if (std::abs(x)> this->contactPointAreaDim_/2 ||
-          std::abs(y)> this->contactPointAreaDim_/2 ||
-          std::abs(z)> this->contactPointAreaDim_/2) {
+      if (x>= this->contactPointAreaDim_/2 || x < -this->contactPointAreaDim_/2 ||
+          y>= this->contactPointAreaDim_/2 || y < -this->contactPointAreaDim_/2 ||
+          z>= this->contactPointAreaDim_/2 || z < -this->contactPointAreaDim_/2) {
         std::cerr << "[BodyContactConstraint] contactPoint is out of contactPointArea. Check contactPointLength and contactPointAreaDim !! " << contactPoints[i].translation().transpose() << std::endl;
       }
       this->contactPoints_[convertContactPointsIdx(x,y,z)].push_back(contactPoints[i]);
@@ -92,9 +92,9 @@ namespace ik_constraint2_body_contact{
       for (int kx=0; kx<2; kx++) {
         for (int ky=0; ky<2; ky++) {
           for (int kz=0; kz<2; kz++) {
-            if (std::abs(x+kx*dx)> this->contactPointAreaDim_/2 ||
-                std::abs(y+ky*dy)> this->contactPointAreaDim_/2 ||
-                std::abs(z+kz*dz)> this->contactPointAreaDim_/2) continue;
+            if (x+kx*dx >= this->contactPointAreaDim_/2 || x+kx*dx < - this->contactPointAreaDim_/2 ||
+                y+ky*dy >= this->contactPointAreaDim_/2 || y+ky*dy < - this->contactPointAreaDim_/2 ||
+                z+kz*dz >= this->contactPointAreaDim_/2 || z+kz*dz < - this->contactPointAreaDim_/2) continue;
             idxs.push_back(convertContactPointsIdx(x+kx*dx,y+ky*dy,z+kz*dz));
           }
         }
@@ -246,10 +246,7 @@ namespace ik_constraint2_body_contact{
     this->jacobian_full_local_.topRows<3>() += IKConstraint::cross(this->current_error_eval_.head<3>()) * eval_R_sparse.transpose() * this->jacobian_eval_full_.bottomRows<3>();
     this->jacobian_full_local_.bottomRows<3>() += IKConstraint::cross(this->current_error_eval_.tail<3>()) * eval_R_sparse.transpose() * this->jacobian_eval_full_.bottomRows<3>();
 
-    // 接触点の接平面でのみ動く
-    int normaleq = 0;
-    if (this->jacobianColMap_.find(this->contact_pos_link_) != this->jacobianColMap_.end()) normaleq = 1;
-    this->jacobian_.resize((this->weight_.array() > 0.0).count()+normaleq,this->jacobian_full_local_.cols());
+    this->jacobian_.resize((this->weight_.array() > 0.0).count(),this->jacobian_full_local_.cols());
     for(size_t i=0, idx=0;i<6;i++){
       if(this->weight_[i]>0.0) {
         this->jacobian_.row(idx) = this->weight_[i] * this->jacobian_full_local_.row(i);
@@ -257,6 +254,7 @@ namespace ik_constraint2_body_contact{
       }
     }
 
+    // 接触点の接平面でのみ動く
     if (this->jacobianColMap_.find(this->contact_pos_link_) != this->jacobianColMap_.end()) {
       cnoid::Vector3 normal = this->normal_;
       this->jacobian_contact_pos_.coeffRef(0,this->jacobianColMap_[this->jacobian_contact_pos_link_]+0) = normal[0];
