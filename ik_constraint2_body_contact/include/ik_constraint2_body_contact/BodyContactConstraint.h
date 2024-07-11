@@ -33,10 +33,14 @@ namespace ik_constraint2_body_contact{
     cnoid::LinkPtr contact_pos_link_ = nullptr;
     std::vector<std::vector<cnoid::Isometry3> > contactPoints_; // 計算速度向上のため、contactPointLength立方ごとに接触候補点をまとめておく.
     std::vector<std::vector<cnoid::Vector3> > contactNormals_; // contactPointとサイズが同じ. 接触点の法線方向を滑らかにしたもの. 角を通るヤコビアンを出すため.
+    std::vector<std::vector<cnoid::Vector3> > contactNormalJacobianXs_; // contactPointとサイズが同じ. 接触点の近傍の法線をx偏微分したもの. 姿勢のヤコビアンに使う.
+    std::vector<std::vector<cnoid::Vector3> > contactNormalJacobianYs_; // contactPointとサイズが同じ. 接触点の近傍の法線をy偏微分したもの. 姿勢のヤコビアンに使う.
+    std::vector<std::vector<cnoid::Vector3> > contactNormalJacobianZs_; // contactPointとサイズが同じ. 接触点の近傍の法線をz偏微分したもの. 姿勢のヤコビアンに使う.
     double contactSearchLimit_ = 0.04;
     double contactWeight_ = 1.0; // 関節角度に対すると接触点の探索重み. 小さいほうがより接触点を探索する. 接触点が変わるとIKが振動気味になるのは避けられないので、先に接触点を動かして最近傍点あたりに寄せてから関節角度で近づいていくとよい.
     cnoid::Vector3 normal_ = cnoid::Vector3::UnitX();
-    double normalGradientDistance_ = 0.1; // contactNormalsを計算する際に、normalGradientDistanceの範囲内のcontactPointsから計算する.
+    std::vector<cnoid::Vector3> normalJacobian_ = std::vector<cnoid::Vector3>{cnoid::Vector3::Zero(), cnoid::Vector3::Zero(), cnoid::Vector3::Zero()};
+    double normalGradientDistance_ = 0.05; // contactNormalsを計算する際に、normalGradientDistanceの範囲内のcontactPointsから計算する.
     double contactPointLength_ = 0.05; // contactPointAreaLength
     int  contactPointAreaDim_ = 16; // contactPointsは全て原点中心の一辺がcontactPointAreaLength*contactPointAreaDimの立方体の中に収まっている必要がある.
 

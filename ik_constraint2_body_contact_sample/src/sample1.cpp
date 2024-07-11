@@ -118,14 +118,14 @@ namespace ik_constraint2_body_contact_sample{
       constraint->A_localpos().translation() = cnoid::Vector3(0.025,0.0,0.-0.01);
       constraint->B_link() = nullptr;
       constraint->B_localpos().translation() = cnoid::Vector3(0.85,-0.2,0.8);
-      constraint->B_localpos().linear() = cnoid::Matrix3(cnoid::AngleAxis(M_PI/2,cnoid::Vector3(0,1,0)));
+      constraint->B_localpos().linear() = cnoid::Matrix3(cnoid::AngleAxis(-M_PI/2,cnoid::Vector3(0,1,0)));
       constraint->eval_localR() = constraint->B_localpos().linear();
       constraint->contact_pos_link() = variable;
       constraint->contact_pos_link()->T() = constraint->A_localpos();
       constraint->setContactPoints(contactPoints, 0.05, 10);
       constraint->contactSearchLimit() = 0.02;
       constraint->precision() = 0.02;
-      constraint->contactWeight() = 0.5;
+      constraint->contactWeight() = 1.0;
       constraint->weight()[3] = 0.1;
       constraint->weight()[4] = 0.1;
       constraint->weight()[5] = 0;

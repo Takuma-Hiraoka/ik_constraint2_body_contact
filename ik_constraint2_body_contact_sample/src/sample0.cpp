@@ -36,7 +36,9 @@ namespace ik_constraint2_body_contact_sample{
       constraint->B_localpos().translation() = cnoid::Vector3(0.47,-0.11,-0.1);
       constraint->B_localpos().linear() = cnoid::Matrix3(cnoid::AngleAxis(M_PI,cnoid::Vector3(0,1,0)));
       constraint->contact_pos_link() = variable;
-      constraint->debugLevel() = 0;
+      constraint->debugLevel() = 3;
+      constraint->weight()[3] = 0.1;
+      constraint->weight()[4] = 0.1;
       constraint->weight()[5] = 0;
       std::vector<cnoid::Isometry3> contactPoints;
       double resolution=0.02;

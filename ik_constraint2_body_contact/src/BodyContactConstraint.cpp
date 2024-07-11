@@ -35,14 +35,20 @@ namespace ik_constraint2_body_contact{
       std::cerr << "[BodyContactConstraint] contact_pos_link is not FreeJoint !" << std::endl;
     }
 
-    if (this->contactNormals_.size() == 0) {
+    if (this->contactNormals_.size() == 0 ||
+        this->contactNormalJacobianXs_.size() == 0 ||
+        this->contactNormalJacobianYs_.size() == 0 ||
+        this->contactNormalJacobianZs_.size() == 0) {
       cnoid::TimeMeasure timer;
       if (this->debugLevel_ >= 1) timer.begin();
       this->contactNormals_.resize(this->contactPointAreaDim_*this->contactPointAreaDim_*this->contactPointAreaDim_);
+      this->contactNormalJacobianXs_.resize(this->contactPointAreaDim_*this->contactPointAreaDim_*this->contactPointAreaDim_);
+      this->contactNormalJacobianYs_.resize(this->contactPointAreaDim_*this->contactPointAreaDim_*this->contactPointAreaDim_);
+      this->contactNormalJacobianZs_.resize(this->contactPointAreaDim_*this->contactPointAreaDim_*this->contactPointAreaDim_);
       double normalAngle = M_PI * 2 / 3; // 薄い板の場合の裏側は除く
       for (unsigned int i=0; i<this->contactPoints_.size(); i++) {
         if (this->contactPoints_[i].size() == 0) continue;
-        // normalを計算する近傍のidxを求める
+        // 計算する近傍のidxを求める
         int x = i % this->contactPointAreaDim_ - (this->contactPointAreaDim_)/2;
         int y = (i % (this->contactPointAreaDim_*this->contactPointAreaDim_)) / this->contactPointAreaDim_ - (this->contactPointAreaDim_)/2;
         int z = i / (this->contactPointAreaDim_*this->contactPointAreaDim_) - (this->contactPointAreaDim_)/2;
@@ -60,6 +66,9 @@ namespace ik_constraint2_body_contact{
 
         for (int j=0; j<this->contactPoints_[i].size(); j++){
           cnoid::Vector3 normalSum = cnoid::Vector3::Zero();
+          cnoid::Vector3 normalJacobianXSum = cnoid::Vector3::Zero();
+          cnoid::Vector3 normalJacobianYSum = cnoid::Vector3::Zero();
+          cnoid::Vector3 normalJacobianZSum = cnoid::Vector3::Zero();
           int weightSum = 0;
           for (unsigned int idx=0; idx<idxs.size(); idx++){
             for (int k=0;k<this->contactPoints_[idxs[idx]].size(); k++) {
@@ -67,14 +76,23 @@ namespace ik_constraint2_body_contact{
               if (dist < this->normalGradientDistance_ &&
                   (normalAngle >= std::acos(std::min(1.0,(std::max(-1.0,(contactPoints_[i][j].linear()*cnoid::Vector3::UnitZ()).dot(contactPoints_[idxs[idx]][k].linear() * cnoid::Vector3::UnitZ()))))))) {
                 normalSum += contactPoints_[idxs[idx]][k].linear()*cnoid::Vector3::UnitZ();
+                if ((contactPoints_[idxs[idx]][k].translation() - contactPoints_[i][j].translation())[0] != 0) normalJacobianXSum += (contactPoints_[i][j].linear()*cnoid::Vector3::UnitZ()).cross(contactPoints_[idxs[idx]][k].linear()*cnoid::Vector3::UnitZ()) / (contactPoints_[idxs[idx]][k].translation() - contactPoints_[i][j].translation())[0];
+                else normalJacobianXSum += cnoid::Vector3::Zero();
+                if ((contactPoints_[idxs[idx]][k].translation() - contactPoints_[i][j].translation())[1] != 0) normalJacobianYSum += (contactPoints_[i][j].linear()*cnoid::Vector3::UnitZ()).cross(contactPoints_[idxs[idx]][k].linear()*cnoid::Vector3::UnitZ()) / (contactPoints_[idxs[idx]][k].translation() - contactPoints_[i][j].translation())[1];
+                else normalJacobianYSum += cnoid::Vector3::Zero();
+                if ((contactPoints_[idxs[idx]][k].translation() - contactPoints_[i][j].translation())[2] != 0) normalJacobianZSum += (contactPoints_[i][j].linear()*cnoid::Vector3::UnitZ()).cross(contactPoints_[idxs[idx]][k].linear()*cnoid::Vector3::UnitZ()) / (contactPoints_[idxs[idx]][k].translation() - contactPoints_[i][j].translation())[2];
+                else normalJacobianZSum += cnoid::Vector3::Zero();
                 weightSum++;
               }
             }
           }
           this->contactNormals_[i].push_back((normalSum / weightSum).normalized());
+          this->contactNormalJacobianXs_[i].push_back((normalJacobianXSum / weightSum));
+          this->contactNormalJacobianYs_[i].push_back((normalJacobianYSum / weightSum));
+          this->contactNormalJacobianZs_[i].push_back((normalJacobianZSum / weightSum));
         }
       }
-      if (this->debugLevel_ >= 1) std::cerr << "[BodyContactConstraint] " << (this->A_link_ ? this->A_link_->name() : std::string("world")) << " create nominals " << timer.measure() << " [s]" << std::endl;
+      if (this->debugLevel_ >= 1) std::cerr << "[BodyContactConstraint] " << (this->A_link_ ? this->A_link_->name() : std::string("world")) << " create nominals and jacobians" << timer.measure() << " [s]" << std::endl;
     }
     // 探索された接触点位置をもとに、PositionConstraintのA_localpos_を更新する
     // 最も近い接触点候補を選ぶ
@@ -105,10 +123,14 @@ namespace ik_constraint2_body_contact{
       for (unsigned int idx=0; idx<idxs.size(); idx++){
         for (int i=0; i<this->contactPoints_[idxs[idx]].size(); i++) {
           double value = (this->contactPoints_[idxs[idx]][i].translation() - this->contact_pos_link_->p()).norm();
+          //          value -= std::min(this->weight_[3], this->weight_[4])*(this->contactPoints_[idxs[idx]][i].linear()*cnoid::Vector3::UnitZ()).dot(this->contact_pos_link_->R() * cnoid::Vector3::UnitZ());
           if (value < minValue) {
             minValue = value;
             selectedContact = this->contactPoints_[idxs[idx]][i];
             this->normal_ = this->contactNormals_[idxs[idx]][i];
+            this->normalJacobian_[0] = this->contactNormalJacobianXs_[idxs[idx]][i];
+            this->normalJacobian_[1] = this->contactNormalJacobianYs_[idxs[idx]][i];
+            this->normalJacobian_[2] = this->contactNormalJacobianZs_[idxs[idx]][i];
           }
         }
       }
@@ -122,8 +144,10 @@ namespace ik_constraint2_body_contact{
       std::cerr << "selected contact point" << std::endl;
       std::cerr << this->A_localpos_.translation().transpose() << std::endl;
       std::cerr << this->A_localpos_.rotation() << std::endl;
-      std::cerr << "selected contact normal" << std::endl;
-      std::cerr << this->normal_.transpose() << std::endl;
+      std::cerr << "selected contact normal : " << this->normal_.transpose() << std::endl;
+      std::cerr << "selected contact normal jacobian X : " << this->normalJacobian_[0].transpose() << std::endl;
+      std::cerr << "selected contact normal jacobian Y : " << this->normalJacobian_[1].transpose() << std::endl;
+      std::cerr << "selected contact normal jacobian Z : " << this->normalJacobian_[2].transpose() << std::endl;
     }
     PositionConstraint::updateBounds(); // contactPointsの分解能によっては振動する可能性
     if (this->contact_pos_link_) {
@@ -190,6 +214,15 @@ namespace ik_constraint2_body_contact{
         this->jacobian_A_full_.insert(2,this->jacobianColMap_[this->jacobian_contact_pos_link_]+0) = 1;
         this->jacobian_A_full_.insert(2,this->jacobianColMap_[this->jacobian_contact_pos_link_]+1) = 1;
         this->jacobian_A_full_.insert(2,this->jacobianColMap_[this->jacobian_contact_pos_link_]+2) = 1;
+        this->jacobian_A_full_.insert(3,this->jacobianColMap_[this->jacobian_contact_pos_link_]+0) = 1;
+        this->jacobian_A_full_.insert(3,this->jacobianColMap_[this->jacobian_contact_pos_link_]+1) = 1;
+        this->jacobian_A_full_.insert(3,this->jacobianColMap_[this->jacobian_contact_pos_link_]+2) = 1;
+        this->jacobian_A_full_.insert(4,this->jacobianColMap_[this->jacobian_contact_pos_link_]+0) = 1;
+        this->jacobian_A_full_.insert(4,this->jacobianColMap_[this->jacobian_contact_pos_link_]+1) = 1;
+        this->jacobian_A_full_.insert(4,this->jacobianColMap_[this->jacobian_contact_pos_link_]+2) = 1;
+        this->jacobian_A_full_.insert(5,this->jacobianColMap_[this->jacobian_contact_pos_link_]+0) = 1;
+        this->jacobian_A_full_.insert(5,this->jacobianColMap_[this->jacobian_contact_pos_link_]+1) = 1;
+        this->jacobian_A_full_.insert(5,this->jacobianColMap_[this->jacobian_contact_pos_link_]+2) = 1;
         this->jacobian_contact_pos_= Eigen::SparseMatrix<double,Eigen::RowMajor>(1,num_variables);
         this->jacobian_contact_pos_.insert(0,this->jacobianColMap_[this->jacobian_contact_pos_link_]+0) = 1;
         this->jacobian_contact_pos_.insert(0,this->jacobianColMap_[this->jacobian_contact_pos_link_]+1) = 1;
@@ -232,6 +265,20 @@ namespace ik_constraint2_body_contact{
       this->jacobian_A_full_.coeffRef(2,this->jacobianColMap_[this->jacobian_contact_pos_link_]+0) = this->contactWeight_ * this->A_link()->R()(2,0);
       this->jacobian_A_full_.coeffRef(2,this->jacobianColMap_[this->jacobian_contact_pos_link_]+1) = this->contactWeight_ * this->A_link()->R()(2,1);
       this->jacobian_A_full_.coeffRef(2,this->jacobianColMap_[this->jacobian_contact_pos_link_]+2) = this->contactWeight_ * this->A_link()->R()(2,2);
+      cnoid::Matrix3d w;
+      w << this->normalJacobian_[0][0], this->normalJacobian_[1][0], this->normalJacobian_[1][0],
+           this->normalJacobian_[0][1], this->normalJacobian_[1][1], this->normalJacobian_[1][1],
+           this->normalJacobian_[0][2], this->normalJacobian_[1][2], this->normalJacobian_[1][2];
+      cnoid::Matrix3d Rw = this->A_link()->R() * w;
+      this->jacobian_A_full_.coeffRef(3,this->jacobianColMap_[this->jacobian_contact_pos_link_]+0) = this->contactWeight_ * Rw(0,0);
+      this->jacobian_A_full_.coeffRef(3,this->jacobianColMap_[this->jacobian_contact_pos_link_]+1) = this->contactWeight_ * Rw(0,1);
+      this->jacobian_A_full_.coeffRef(3,this->jacobianColMap_[this->jacobian_contact_pos_link_]+2) = this->contactWeight_ * Rw(0,2);
+      this->jacobian_A_full_.coeffRef(4,this->jacobianColMap_[this->jacobian_contact_pos_link_]+0) = this->contactWeight_ * Rw(1,0);
+      this->jacobian_A_full_.coeffRef(4,this->jacobianColMap_[this->jacobian_contact_pos_link_]+1) = this->contactWeight_ * Rw(1,1);
+      this->jacobian_A_full_.coeffRef(4,this->jacobianColMap_[this->jacobian_contact_pos_link_]+2) = this->contactWeight_ * Rw(1,2);
+      this->jacobian_A_full_.coeffRef(5,this->jacobianColMap_[this->jacobian_contact_pos_link_]+0) = this->contactWeight_ * Rw(2,0);
+      this->jacobian_A_full_.coeffRef(5,this->jacobianColMap_[this->jacobian_contact_pos_link_]+1) = this->contactWeight_ * Rw(2,1);
+      this->jacobian_A_full_.coeffRef(5,this->jacobianColMap_[this->jacobian_contact_pos_link_]+2) = this->contactWeight_ * Rw(2,2);
     }
 
     cnoid::Matrix3d eval_R = (this->eval_link_) ? this->eval_link_->R() * this->eval_localR_ : this->eval_localR_;
