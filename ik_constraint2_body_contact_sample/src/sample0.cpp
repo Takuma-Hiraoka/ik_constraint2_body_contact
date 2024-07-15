@@ -101,35 +101,17 @@ namespace ik_constraint2_body_contact_sample{
     viewer->objects(body);
 
     viewer->drawObjects();
-        // main loop
-    for(int i=0;i<200;i++){
-      prioritized_inverse_kinematics_solver2::IKParam param;
-      param.debugLevel = 0; // debug
-      param.maxIteration = 1;
-      param.we = 1e2;
-      bool solved = prioritized_inverse_kinematics_solver2::solveIKLoop(variables,
-                                                                        constraints,
-                                                                        tasks,
-                                                                        param);
 
-      if(i % 1 == 0){
-        std::cerr << "loop: " << i << std::endl;
-        std::vector<cnoid::SgNodePtr> markers;
-        for(int j=0;j<constraints.size();j++){
-          for(int k=0;k<constraints[j].size(); k++){
-            const std::vector<cnoid::SgNodePtr>& marker = constraints[j][k]->getDrawOnObjects();
-            std::copy(marker.begin(), marker.end(), std::back_inserter(markers));
-          }
-        }
-        viewer->drawOn(markers);
-        viewer->drawObjects();
+    prioritized_inverse_kinematics_solver2::IKParam param;
+    param.debugLevel = 3;
+    param.maxIteration = 200;
+    param.we = 1e2;
+    param.viewer = viewer;
+    param.viewMilliseconds = -1;
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        getchar();
-      }
-
-      if(solved) break;
-    }
-
+    prioritized_inverse_kinematics_solver2::solveIKLoop(variables,
+                                                        constraints,
+                                                        tasks,
+                                                        param);
   }
 }
