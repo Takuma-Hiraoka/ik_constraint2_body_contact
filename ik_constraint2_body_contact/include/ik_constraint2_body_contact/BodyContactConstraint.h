@@ -36,13 +36,14 @@ namespace ik_constraint2_body_contact{
     std::vector<std::vector<cnoid::Vector3> > contactNormalJacobianXs_; // contactPointとサイズが同じ. 接触点の近傍の法線をx偏微分したもの. 姿勢のヤコビアンに使う.
     std::vector<std::vector<cnoid::Vector3> > contactNormalJacobianYs_; // contactPointとサイズが同じ. 接触点の近傍の法線をy偏微分したもの. 姿勢のヤコビアンに使う.
     std::vector<std::vector<cnoid::Vector3> > contactNormalJacobianZs_; // contactPointとサイズが同じ. 接触点の近傍の法線をz偏微分したもの. 姿勢のヤコビアンに使う.
-    double contactSearchLimit_ = 0.04;
+    double contactSearchLimit_ = 0.04; // 接触点探索は1イテレーションあたりこの距離以内で行う. 接触点探索を行うのは、接触点固定でのdistanceの変化量がcontactSearchLimit_より小さくなってから.
     double contactWeight_ = 1.0; // 関節角度に対すると接触点の探索重み. 小さいほうがより接触点を探索する. 接触点が変わるとIKが振動気味になるのは避けられないので、先に接触点を動かして最近傍点あたりに寄せてから関節角度で近づいていくとよい.
     cnoid::Vector3 normal_ = cnoid::Vector3::UnitX();
     std::vector<cnoid::Vector3> normalJacobian_ = std::vector<cnoid::Vector3>{cnoid::Vector3::Zero(), cnoid::Vector3::Zero(), cnoid::Vector3::Zero()};
     double normalGradientDistance_ = 0.05; // contactNormalsを計算する際に、normalGradientDistanceの範囲内のcontactPointsから計算する.
     double contactPointLength_ = 0.05; // contactPointAreaLength
     int  contactPointAreaDim_ = 16; // contactPointsは全て原点中心の一辺がcontactPointAreaLength*contactPointAreaDimの立方体の中に収まっている必要がある.
+    double distanceDiff_ = 0.0;
 
     Eigen::SparseMatrix<double,Eigen::RowMajor> jacobian_contact_pos_;
     Eigen::SparseMatrix<double,Eigen::RowMajor> jacobian_ineq_contact_pos_;

@@ -105,6 +105,7 @@ namespace ik_constraint2_body_contact_sample{
     prioritized_inverse_kinematics_solver2::IKParam param;
     param.debugLevel = 3;
     param.maxIteration = 200;
+    param.satisfiedConvergeLevel = 2; // 姿勢によって角から離れようとしない問題があるので収束しないが、こうしないと動き始めでBodyContactが動くより前にconvergeThreを満たしてしまう.
     param.we = 1e2;
     param.viewer = viewer;
     param.viewMilliseconds = -1;

@@ -129,7 +129,7 @@ namespace ik_constraint2_body_contact_sample{
       constraint->weight()[3] = 0.1;
       constraint->weight()[4] = 0.1;
       constraint->weight()[5] = 0;
-      constraint->debugLevel() = 0;
+      constraint->debugLevel() = 3;
 
       constraints2.push_back(constraint);
     }
