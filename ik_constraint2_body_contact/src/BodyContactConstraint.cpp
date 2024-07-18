@@ -152,21 +152,6 @@ namespace ik_constraint2_body_contact{
     double prevDistance = this->distance();
     PositionConstraint::updateBounds(); // contactPointsの分解能によっては振動する可能性
     this->distanceDiff_ = std::abs(prevDistance - this->distance());
-    if (this->contact_pos_link_) {
-      if (this->minIneq_.size() != 3 ||
-          this->maxIneq_.size() != 3) {
-        // 接触点の接平面でのみ動く
-        // 接触点の1イテレーションあたり探索領域の制限
-        this->minIneq_.resize(3);
-        this->minIneq_[0] = 0.0;
-        this->minIneq_[1] = - this->contactSearchLimit_;
-        this->minIneq_[2] = - this->contactSearchLimit_;
-        this->maxIneq_.resize(3);
-        this->maxIneq_[0] = 0.0;
-        this->maxIneq_[1] = this->contactSearchLimit_;
-        this->maxIneq_[2] = this->contactSearchLimit_;
-      }
-    }
   }
 
   void BodyContactConstraint::updateJacobian (const std::vector<cnoid::LinkPtr>& joints) {
@@ -324,6 +309,19 @@ namespace ik_constraint2_body_contact{
         this->jacobianIneq_.row(0) = this->jacobian_contact_pos_.row(0);
         this->jacobianIneq_.row(1) = this->jacobian_ineq_contact_pos_.row(0);
         this->jacobianIneq_.row(2) = this->jacobian_ineq_contact_pos_.row(1);
+      }
+      if (this->minIneq_.size() != 3 ||
+          this->maxIneq_.size() != 3) {
+        // 接触点の接平面でのみ動く
+        // 接触点の1イテレーションあたり探索領域の制限
+        this->minIneq_.resize(3);
+        this->minIneq_[0] = 0.0;
+        this->minIneq_[1] = - this->contactSearchLimit_;
+        this->minIneq_[2] = - this->contactSearchLimit_;
+        this->maxIneq_.resize(3);
+        this->maxIneq_[0] = 0.0;
+        this->maxIneq_[1] = this->contactSearchLimit_;
+        this->maxIneq_[2] = this->contactSearchLimit_;
       }
     } else {
       // this->jacobianIneq_のサイズだけそろえる
