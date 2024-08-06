@@ -137,6 +137,8 @@ namespace ik_constraint2_body_contact{
       if (minValue != 1e3) {
         this->A_localpos_ = selectedContact;
         this->contact_pos_link_->T() = selectedContact;
+      } else { // 近傍にないときは前回の接触点を使う. 探索の安定化とglobal samplingのため
+        this->contact_pos_link_->T() = this->A_localpos_;
       }
       if (this->debugLevel_ >= 1) std::cerr << "[BodyContactConstraint] " << (this->A_link_ ? this->A_link_->name() : std::string("world")) << " search nearest contact point " << timer.measure() << " [s]" << std::endl;
     }
@@ -349,6 +351,7 @@ namespace ik_constraint2_body_contact{
     if(this->A_link_ && modelMap.find(this->A_link_->body()) != modelMap.end()) ret->A_link() = modelMap.find(this->A_link_->body())->second->link(this->A_link_->index());
     if(this->B_link_ && modelMap.find(this->B_link_->body()) != modelMap.end()) ret->B_link() = modelMap.find(this->B_link_->body())->second->link(this->B_link_->index());
     if(this->eval_link_ && modelMap.find(this->eval_link_->body()) != modelMap.end()) ret->eval_link() = modelMap.find(this->eval_link_->body())->second->link(this->eval_link_->index());
+    if(this->contact_pos_link_ && modelMap.find(this->contact_pos_link_->body()) != modelMap.end()) ret->contact_pos_link() = modelMap.find(this->contact_pos_link_->body())->second->link(this->contact_pos_link_->index());
   }
 
 }

@@ -13,6 +13,8 @@ namespace ik_constraint2_body_contact{
     // contactPoints: 接触点候補
     const cnoid::LinkPtr& contact_pos_link() const { return contact_pos_link_;}
     cnoid::LinkPtr& contact_pos_link() { return contact_pos_link_;}
+    const cnoid::BodyPtr& contact_pos_body() const { return contact_pos_body_;}
+    cnoid::BodyPtr& contact_pos_body() { return contact_pos_body_;}
     const double& contactSearchLimit() const { return contactSearchLimit_;}
     double& contactSearchLimit() { return contactSearchLimit_;}
     const double& contactWeight() const { return contactWeight_;}
@@ -31,6 +33,7 @@ namespace ik_constraint2_body_contact{
 
   private:
     cnoid::LinkPtr contact_pos_link_ = nullptr;
+    cnoid::BodyPtr contact_pos_body_ = nullptr; // clone用
     std::vector<std::vector<cnoid::Isometry3> > contactPoints_; // 計算速度向上のため、contactPointLength立方ごとに接触候補点をまとめておく.
     std::vector<std::vector<cnoid::Vector3> > contactNormals_; // contactPointとサイズが同じ. 接触点の法線方向を滑らかにしたもの. 角を通るヤコビアンを出すため.
     std::vector<std::vector<cnoid::Vector3> > contactNormalJacobianXs_; // contactPointとサイズが同じ. 接触点の近傍の法線をx偏微分したもの. 姿勢のヤコビアンに使う.
