@@ -31,7 +31,7 @@ namespace ik_constraint2_body_contact{
   }
 
   void BodyContactConstraint::updateBounds() {
-    if (!this->contact_pos_link_ || !this->contact_pos_link_->isFreeJoint()) {
+    if (this->contact_pos_link_ && !this->contact_pos_link_->isFreeJoint()) {
       std::cerr << "[BodyContactConstraint] contact_pos_link is not FreeJoint !" << std::endl;
     }
 
