@@ -13,5 +13,6 @@
   <depend>choreonoid</depend>
   <depend>choreonoid_viewer</depend>
   <depend>ik_constraint2</depend>
+  <depend>ik_constraint2_body_contact</depend>
 
 </package>

@@ -122,7 +122,7 @@ namespace ik_constraint2_body_contact_sample{
       constraint->eval_localR() = constraint->B_localpos().linear();
       constraint->A_contact_pos_link() = variable;
       constraint->A_contact_pos_link()->T() = constraint->A_localpos();
-      constraint->setContactPointsA(contactPoints, 0.05, 10);
+      constraint->A_setContactPoints(contactPoints, 0.05, 10);
       constraint->contactSearchLimit() = 0.02;
       constraint->precision() = 0.02;
       constraint->contactWeight() = 1.0;

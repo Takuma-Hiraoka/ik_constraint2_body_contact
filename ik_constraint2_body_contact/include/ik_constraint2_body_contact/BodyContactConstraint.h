@@ -31,8 +31,8 @@ namespace ik_constraint2_body_contact{
     virtual void updateJacobian (const std::vector<cnoid::LinkPtr>& joints) override;
 
     unsigned int convertContactPointsIdx(int x, int y, int z, int dim);
-    void setContactPointsA(std::vector<cnoid::Isometry3> contactPoints, double contactPointLength=0.05, int contactPointAreaDim=16);
-    void setContactPointsB(std::vector<cnoid::Isometry3> contactPoints, double contactPointLength=0.05, int contactPointAreaDim=16);
+    void A_setContactPoints(std::vector<cnoid::Isometry3> contactPoints, double contactPointLength=0.05, int contactPointAreaDim=16);
+    void B_setContactPoints(std::vector<cnoid::Isometry3> contactPoints, double contactPointLength=0.05, int contactPointAreaDim=16);
     void calcNominals(const std::vector<std::vector<cnoid::Isometry3> >& cps, // input
                       const double& cpLength,
                       const int& cpAreaDim,

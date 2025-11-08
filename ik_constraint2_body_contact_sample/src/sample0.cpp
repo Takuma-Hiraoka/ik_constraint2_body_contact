@@ -89,7 +89,7 @@ namespace ik_constraint2_body_contact_sample{
           contactPoints.push_back(contactPoint);
         }
       }
-      constraint->setContactPointsA(contactPoints, 0.05, 28);
+      constraint->A_setContactPoints(contactPoints, 0.05, 28);
       constraint->precision() = resolution;
       constraints1.push_back(constraint);
     }
