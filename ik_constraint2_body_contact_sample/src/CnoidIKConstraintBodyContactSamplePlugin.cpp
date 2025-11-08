@@ -22,6 +22,15 @@ namespace ik_constraint2_body_contact_sample{
   };
   typedef cnoid::ref_ptr<sample1Item> sample1ItemPtr;
 
+  void sample2();
+  class sample2Item : public choreonoid_viewer::ViewerBaseItem {
+  public:
+    static void initializeClass(cnoid::ExtensionManager* ext){ ext->itemManager().registerClass<sample2Item>("sample2Item"); }
+  protected:
+    virtual void main() override{ sample2(); return;}
+  };
+  typedef cnoid::ref_ptr<sample2Item> sample2ItemPtr;
+
   class IKConstraintBodyContactSamplePlugin : public cnoid::Plugin
   {
   public:
@@ -33,6 +42,7 @@ namespace ik_constraint2_body_contact_sample{
     {
       sample0Item::initializeClass(this);
       sample1Item::initializeClass(this);
+      sample2Item::initializeClass(this);
       return true;
     }
   };

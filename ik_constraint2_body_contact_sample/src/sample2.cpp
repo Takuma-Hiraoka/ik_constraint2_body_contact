@@ -10,7 +10,7 @@
 #include <ik_constraint2_body_contact/BodyContactConstraint.h>
 
 namespace ik_constraint2_body_contact_sample{
-  void sample1(){
+  void sample2(){
     cnoid::BodyLoader bodyLoader;
     cnoid::BodyPtr robot = bodyLoader.load(ros::package::getPath("choreonoid") + "/share/model/SR1/SR1.body");
     robot->rootLink()->p() = cnoid::Vector3(0,0,0.6);
@@ -33,7 +33,8 @@ namespace ik_constraint2_body_contact_sample{
     cnoid::YAMLReader reader;
     cnoid::MappingPtr node;
     std::string prevLinkName = "";
-    std::vector<cnoid::Isometry3> contactPoints;
+    std::vector<cnoid::Isometry3> contactPointsR;
+    std::vector<cnoid::Isometry3> contactPointsL;
     try {
       node = reader.loadDocument(contactFileName)->toMapping();
     } catch(const cnoid::ValueNode::Exception& ex) {
@@ -49,7 +50,7 @@ namespace ik_constraint2_body_contact_sample{
           std::string linkName;
           // linkname
           info->extract("link", linkName);
-          if (linkName != "RARM_WRIST_R") continue;
+          if (!((linkName == "RARM_WRIST_R") || (linkName == "LARM_WRIST_R"))) continue;
           cnoid::Isometry3 sensor;
           // translation
           cnoid::ValueNodePtr translation_ = info->extract("translation");
@@ -68,7 +69,8 @@ namespace ik_constraint2_body_contact_sample{
                                                   cnoid::Vector3{rotationTmp->at(0)->toDouble(), rotationTmp->at(1)->toDouble(), rotationTmp->at(2)->toDouble()}).toRotationMatrix();
             }
           }
-          contactPoints.push_back(sensor);
+          if (linkName == "RARM_WRIST_R") contactPointsR.push_back(sensor);
+          if (linkName == "LARM_WRIST_R") contactPointsL.push_back(sensor);
         }
       }
     }
@@ -109,21 +111,24 @@ namespace ik_constraint2_body_contact_sample{
       constraints1.push_back(constraint);
     }
     std::vector<std::shared_ptr<ik_constraint2::IKConstraint> > constraints2;
-    cnoid::LinkPtr variable = new cnoid::Link();
-    variable->setJointType(cnoid::Link::JointType::FreeJoint);
+    cnoid::LinkPtr variableR = new cnoid::Link();
+    variableR->setJointType(cnoid::Link::JointType::FreeJoint);
+    cnoid::LinkPtr variableL = new cnoid::Link();
+    variableL->setJointType(cnoid::Link::JointType::FreeJoint);
     {
       // task: rarm to target. never reach
       std::shared_ptr<ik_constraint2_body_contact::BodyContactConstraint> constraint = std::make_shared<ik_constraint2_body_contact::BodyContactConstraint>();
       constraint->A_link() = robot->link("RARM_WRIST_R");
-      constraint->A_localpos().translation() = cnoid::Vector3(0.025,0.0,0.-0.01);
-      constraint->B_link() = nullptr;
-      constraint->B_localpos().translation() = cnoid::Vector3(0.85,-0.2,0.8);
-      constraint->B_localpos().linear() = cnoid::Matrix3(cnoid::AngleAxis(-M_PI/2,cnoid::Vector3(0,1,0)));
-      constraint->eval_localR() = constraint->B_localpos().linear();
-      constraint->A_contact_pos_link() = variable;
+      constraint->A_localpos().translation() = cnoid::Vector3(0.0,-0.025,0.-0.1);
+      constraint->B_link() = robot->link("LARM_WRIST_R");;
+      constraint->B_localpos().translation() = cnoid::Vector3(0.0,0.025,0.-0.1);
+      constraint->A_contact_pos_link() = variableR;
       constraint->A_contact_pos_link()->T() = constraint->A_localpos();
-      constraint->setContactPointsA(contactPoints, 0.05, 10);
-      constraint->contactSearchLimit() = 0.02;
+      constraint->B_contact_pos_link() = variableL;
+      constraint->B_contact_pos_link()->T() = constraint->B_localpos();
+      constraint->setContactPointsA(contactPointsR, 0.05, 10);
+      constraint->setContactPointsB(contactPointsL, 0.05, 10);
+      constraint->contactSearchLimit() = 0.05;
       constraint->precision() = 0.02;
       constraint->contactWeight() = 1.0;
       constraint->weight()[3] = 0.1;
@@ -140,7 +145,8 @@ namespace ik_constraint2_body_contact_sample{
     for(size_t i=0;i<robot->numJoints();i++){
       variables.push_back(robot->joint(i));
     }
-    variables.push_back(variable);
+    variables.push_back(variableR);
+    variables.push_back(variableL);
     std::vector<std::vector<std::shared_ptr<ik_constraint2::IKConstraint> > > constraints{constraints0,constraints1,constraints2};
     // setup viewer
     std::shared_ptr<choreonoid_viewer::Viewer> viewer = std::make_shared<choreonoid_viewer::Viewer>();
@@ -153,7 +159,7 @@ namespace ik_constraint2_body_contact_sample{
     param.maxIteration = 200;
     param.we = 1e2;
     param.viewer = viewer;
-    param.viewMilliseconds = 100;
+    param.viewMilliseconds = 500;
 
     prioritized_inverse_kinematics_solver2::solveIKLoop(variables,
                                                         constraints,

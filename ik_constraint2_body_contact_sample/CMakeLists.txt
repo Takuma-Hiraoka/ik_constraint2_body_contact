@@ -26,6 +26,7 @@ add_library(CnoidIKConstraintBodyContactSamplePlugin SHARED
   src/CnoidIKConstraintBodyContactSamplePlugin.cpp
   src/sample0.cpp
   src/sample1.cpp
+  src/sample2.cpp
   )
 
 target_link_libraries(CnoidIKConstraintBodyContactSamplePlugin
