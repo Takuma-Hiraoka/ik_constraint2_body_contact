@@ -20,6 +20,26 @@ namespace ik_constraint2_body_contact{
     cnoid::LinkPtr& B_contact_pos_link() { return B_contact_pos_link_;}
     const cnoid::BodyPtr& B_contact_pos_body() const { return B_contact_pos_body_;}
     cnoid::BodyPtr& B_contact_pos_body() { return B_contact_pos_body_;}
+    const std::vector<std::vector<cnoid::Isometry3> >& A_contactPoints() const { return A_contactPoints_;}
+    std::vector<std::vector<cnoid::Isometry3> >& A_contactPoints() { return A_contactPoints_;}
+    const std::vector<std::vector<cnoid::Isometry3> >& B_contactPoints() const { return B_contactPoints_;}
+    std::vector<std::vector<cnoid::Isometry3> >& B_contactPoints() { return B_contactPoints_;}
+    const std::vector<std::vector<cnoid::Vector3> >& A_contactNormals() const { return A_contactNormals_;}
+    std::vector<std::vector<cnoid::Vector3> >& A_contactNormals() { return A_contactNormals_;}
+    const std::vector<std::vector<cnoid::Vector3> >& A_contactNormalJacobianXs() const { return A_contactNormalJacobianXs_;}
+    std::vector<std::vector<cnoid::Vector3> >& A_contactNormalJacobianXs() { return A_contactNormalJacobianXs_;}
+    const std::vector<std::vector<cnoid::Vector3> >& A_contactNormalJacobianYs() const { return A_contactNormalJacobianYs_;}
+    std::vector<std::vector<cnoid::Vector3> >& A_contactNormalJacobianYs() { return A_contactNormalJacobianYs_;}
+    const std::vector<std::vector<cnoid::Vector3> >& A_contactNormalJacobianZs() const { return A_contactNormalJacobianZs_;}
+    std::vector<std::vector<cnoid::Vector3> >& A_contactNormalJacobianZs() { return A_contactNormalJacobianZs_;}
+    const std::vector<std::vector<cnoid::Vector3> >& B_contactNormals() const { return B_contactNormals_;}
+    std::vector<std::vector<cnoid::Vector3> >& B_contactNormals() { return B_contactNormals_;}
+    const std::vector<std::vector<cnoid::Vector3> >& B_contactNormalJacobianXs() const { return B_contactNormalJacobianXs_;}
+    std::vector<std::vector<cnoid::Vector3> >& B_contactNormalJacobianXs() { return B_contactNormalJacobianXs_;}
+    const std::vector<std::vector<cnoid::Vector3> >& B_contactNormalJacobianYs() const { return B_contactNormalJacobianYs_;}
+    std::vector<std::vector<cnoid::Vector3> >& B_contactNormalJacobianYs() { return B_contactNormalJacobianYs_;}
+    const std::vector<std::vector<cnoid::Vector3> >& B_contactNormalJacobianZs() const { return B_contactNormalJacobianZs_;}
+    std::vector<std::vector<cnoid::Vector3> >& B_contactNormalJacobianZs() { return B_contactNormalJacobianZs_;}
     const double& contactSearchLimit() const { return contactSearchLimit_;}
     double& contactSearchLimit() { return contactSearchLimit_;}
     const double& contactWeight() const { return contactWeight_;}
