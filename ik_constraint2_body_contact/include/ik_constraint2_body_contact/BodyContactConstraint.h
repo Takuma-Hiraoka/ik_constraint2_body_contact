@@ -26,6 +26,14 @@ namespace ik_constraint2_body_contact{
     std::vector<std::vector<cnoid::Isometry3> >& B_contactPoints() { return B_contactPoints_;}
     const std::vector<std::vector<cnoid::Vector3> >& A_contactNormals() const { return A_contactNormals_;}
     std::vector<std::vector<cnoid::Vector3> >& A_contactNormals() { return A_contactNormals_;}
+    const double& A_contactPointLength() const { return A_contactPointLength_;}
+    double& A_contactPointLength() { return A_contactPointLength_;}
+    const int& A_contactPointAreaDim() const { return A_contactPointAreaDim_;}
+    int& A_contactPointAreaDim() { return A_contactPointAreaDim_;}
+    const double& B_contactPointLength() const { return B_contactPointLength_;}
+    double& B_contactPointLength() { return B_contactPointLength_;}
+    const int& B_contactPointAreaDim() const { return B_contactPointAreaDim_;}
+    int& B_contactPointAreaDim() { return B_contactPointAreaDim_;}
     const std::vector<std::vector<cnoid::Vector3> >& A_contactNormalJacobianXs() const { return A_contactNormalJacobianXs_;}
     std::vector<std::vector<cnoid::Vector3> >& A_contactNormalJacobianXs() { return A_contactNormalJacobianXs_;}
     const std::vector<std::vector<cnoid::Vector3> >& A_contactNormalJacobianYs() const { return A_contactNormalJacobianYs_;}
